@@ -1,0 +1,12 @@
+{
+  "name": "Simploid Module",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Simploid": {
+        "$path": "src/Simploid",
+        "Packages": {"$path": "Packages"}
+      }
+    }
+  }
+}

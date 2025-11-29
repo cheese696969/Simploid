@@ -1,0 +1,18 @@
+# Project place file
+/Simploid.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+# Wally packages
+Packages/
+
+# Lock file (optional)
+wally.lock
+
+# Local configs
+rokit.toml
+
+# Generated files
+sourcemap.json

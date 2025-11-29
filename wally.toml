@@ -1,0 +1,9 @@
+[package]
+name = "hp/simploid"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+Janitor = "howmanysmall/janitor@1.18.3"
+Goodsignal = "stravant/goodsignal@0.3.1"
