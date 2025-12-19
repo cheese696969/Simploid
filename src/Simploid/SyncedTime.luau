@@ -1,5 +1,5 @@
 --Made by Quenty and not by me
---- Syncronize time between client and servers so we can use a universal timestamp
+-- Synchronize time between client and servers so we can use a universal timestamp
 -- across the game.
 -- See: www.nist.gov/el/isd/ieee/upload/tutorial-basic.pdf
 -- @classmod TimeSyncManager

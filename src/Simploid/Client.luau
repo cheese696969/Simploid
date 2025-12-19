@@ -1,12 +1,17 @@
 --!optimize 2
+if not game:GetService("RunService"):IsClient() then return nil end
 --CLIENT SIMPLOID CLASS HELPER
 
 --Module Dependencies: Change path if wanted
 local Config = require(script.Parent.Config)
+local ReplicatedTween = require(script.Parent.ReplicatedTween)
 
+--Storage
 local AnimationFolder:Folder = Instance.new("Folder")
 AnimationFolder.Name = "AnimationFolder"
 AnimationFolder.Parent = script.Parent
+
+local clientActiveSimploids = ReplicatedTween.ClientActiveSimploids
 
 --********************************************************************************************************
 --CLIENT SIMPLOID HELPER METHODS
@@ -21,17 +26,45 @@ return function(Simploid)
 	function Simploid:GetAttribute(attributeName:string) : any
 		return self.Character:GetAttribute(attributeName)
 	end
+
+	-- Returns the RBXScriptSignal for this specific attribute
+	function Simploid:GetAttributeChangedSignal(attributeName: string) : RBXScriptSignal?
+		return self.Character:GetAttributeChangedSignal(attributeName)
+	end
 	
+	--Loads an animation
+	function Simploid:LoadAnimation(animation:Animation) : AnimationTrack?
+		if not self.Animator then 
+			error("No Animator created!") 
+		end
+		return self.Animator:LoadAnimation(animation)
+	end
+
 	--Death method (NOT REPLICATED)
 	function Simploid:Death()
 		self.Janitor:Cleanup()
 		
 		if Config.DEATH_MODE == "BreakJoints" then
+			if Config.SETUP_ANIMATOR and self.Animator then
+				self.Animator.Parent:Destroy()
+			end
+			self.AnchoredRoot:Destroy()
 			for _, descendant in self.Character:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = false
+					continue
+				end
 				if descendant:IsA("Motor6D") then
 					descendant:Destroy()
 				end
 			end
+
+			local ragdoll = self.Character:Clone()
+			self.Character:Remove()
+			ragdoll.Parent = workspace
+			task.wait(Config.SIMPLOID_RAGDOLL_TIME)
+			ragdoll:Destroy()
+
 		elseif Config.DEATH_MODE == "Ragdoll" then
 			local ragdoll = self.Character:Clone()
 			self.Character:Remove()
@@ -56,6 +89,8 @@ return function(Simploid)
 				end
 			end
 			ragdoll.Parent = workspace
+			task.wait(Config.SIMPLOID_RAGDOLL_TIME)
+			ragdoll:Destroy()
 		elseif Config.DEATH_MODE == "Destroy" then
 			self:Destroy()
 			return
@@ -67,9 +102,11 @@ return function(Simploid)
 
 	--Cleanup method
 	function Simploid:Destroy()
+		clientActiveSimploids[self.Character] = nil
 		self.Animations = nil
 		self.Janitor:Destroy()
 		self.Janitor = nil
+		self.Character:Destroy()
 		self = nil
 	end
 end

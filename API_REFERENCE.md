@@ -8,16 +8,18 @@
 | `Health` | `number` | `100` | The current health of the Simploid. |
 | `MaxHealth` | `number` | `100` | The maximum health the Simploid can have. |
 | `WalkSpeed` | `number` | `16` | Determines how fast the Simploid moves. |
+| `JumpHeight` | `number` | `7.2` | Determines how high the Simploid jumps. |
 | `RootHeight` | `number` | `3` | The vertical offset used to detect the ground from the HumanoidRootPart. |
 
 ---
 
-## 📦 Server
+## 📦 Server - (Changeable with the Simploid object itself, example : Simploid.RayDownParams = RaycastParams.new(...))
 
-### **Attributes**
+### **Properties**
 | Name | Type | Description |
 |------|------|--------------|
-| `RayDownParams` | `RaycastParams` | Parameters used for downward raycasts (for character grounding). |
+| `RayDownParams` | `RaycastParams` | Ray parameters object used for downward raycasts (for character grounding). |
+| `Path` | `Path` |  Path object for built-in pathfinding. |
 
 ### **Methods**
 | Method | Description |
@@ -27,7 +29,8 @@
 | `:MoveTo(position: Vector3)` | Moves the Simploid to the given position using linear motion. |
 | `:CancelMoveTo()` | Cancels the current movement operation. |
 | `:PathfindTo(position: Vector3)` | Calculates and follows a path to the given position. |
-| `:SetTimedPosition()` | Moves the Simploid based on a timed pattern. |
+| `:SetTimedPosition()` | Updates the Simploid based on a timed pattern. |
+| `:Jump()` | Makes the Simploid jump. |
 | `:Wander()` | Makes the Simploid move randomly around its current location. |
 | `:Death()` | Handles death logic. |
 | `:Destroy()` | Destroys the Simploid instance and cleans up memory. |
@@ -37,7 +40,7 @@
 
 ## 💻 Client
 
-### **Attributes**
+### **Properties**
 | Name | Type | Description |
 |------|------|--------------|
 | `RayDownParams` | `RaycastParams` | Parameters used for downward raycasts (for character grounding). |

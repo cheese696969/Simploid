@@ -30,22 +30,22 @@ local tweenService = {}
 --Config
 local THRESHOLD = 0
 local DEFAULT_RANGE = Config.SERVER_PLAYER_TO_SIMPLOID_TWEEN_DISTANCE
-local SIMPLOID_FALL_THROTTLE = Config.SIMPLOID_FALL_THROTTLE
 
 --Lerped tween type definition
 type LerpedTween = {
-	NormalType: boolean,
 	Object: BasePart,
 	Start: Vector3,
 	Goal: Vector3,
 	PastTime: number,
 	Duration: number,
 
-	JumpHeight: number?,
-	Gravity: number?,
+	JumpHeight: number,
+	Gravity: number,
 	HalfDuration: number,
 
-	Cancel: (self: Tween) -> nil,
+	Simploid: any,
+
+	Cancel: (self: LerpedTween) -> nil,
 }
 
 type ServerLerpedTween = {
@@ -54,9 +54,18 @@ type ServerLerpedTween = {
 	IsJump: boolean,
 	Goal: Vector3,
 	Speed: number,
+
+	Play: (self: ServerLerpedTween) -> nil,
+	Cancel: (self: ServerLerpedTween) -> nil
 }
 
 if RunService:IsServer() then
+	local serverActiveSimploids = {}
+	tweenService.ServerActiveSimploids = serverActiveSimploids
+
+	local serverPropertyCache = {}
+	tweenService.ServerPropertyCache = serverPropertyCache
+
 	local FallRemote = Instance.new("RemoteEvent")
 	FallRemote.Name = "FallRemote"
 	FallRemote.Parent = script.Parent
@@ -76,18 +85,20 @@ end
 
 local TweenRemote = script:WaitForChild("TweenRemote")
 
-function tweenService:Construct(object: BasePart?, tweenTime: number?, position: Vector3?, jumpHeight: number?, speed: number?) : ServerLerpedTween
+function tweenService.Construct(object: BasePart?, tweenTime: number?, position: Vector3?, jumpHeight: number?, speed: number?)
 	if not object then
 		error("Object doesn't exist.")
 	end
 
-	self = {
+	local serverLerpedTween:ServerLerpedTween = {
 		["IsCancelled"] = false,
 		["Completed"] = Goodsignal.new(),
 
 		["IsJump"] = (jumpHeight or 0) > 0,
 		["Goal"] = position,
 		["Speed"] = speed,
+		["Play"] = nil,
+		["Cancel"] = nil,
 	}
 
 	local function tweenWait(n)
@@ -95,7 +106,7 @@ function tweenService:Construct(object: BasePart?, tweenTime: number?, position:
 		local now = tick()
 		repeat
 			RunService.Heartbeat:Wait()
-			if self.IsCancelled == true then
+			if serverLerpedTween.IsCancelled == true then
 				return true
 			end
 		until tick() - now >= n
@@ -107,14 +118,14 @@ function tweenService:Construct(object: BasePart?, tweenTime: number?, position:
 			local cancelled = tweenWait(t)
 
 			if not cancelled then
-				self.Completed:Fire(true)
+				serverLerpedTween.Completed:Fire(true)
 			end
 
-			table.clear(self)
+			table.clear(serverLerpedTween)
 		end)
 	end
 	
-	function self:Play(range)
+	function serverLerpedTween:Play(range)
 		if not object or not object:IsA("BasePart") or not object:IsDescendantOf(workspace) then
 			warn("The tween object must be a BasePart in the workspace.")
 			return
@@ -137,31 +148,37 @@ function tweenService:Construct(object: BasePart?, tweenTime: number?, position:
 		completionWait(tweenTime)
 	end
 
-	function self:Cancel(clients)
-		if clients then
-			clients = (type(clients) == "table") and clients or { clients }
-
-			for _, client in clients do
-				TweenRemote:FireClient(client, self.Object)
-			end
-		else
-			TweenRemote:FireAllClients(self.Object)
+	function serverLerpedTween:Cancel(shouldNotFireClient:boolean?)
+		if not shouldNotFireClient then
+			TweenRemote:FireAllClients(object)
 		end
 
 		self.Completed:Fire(false)
 		self.IsCancelled = true
 	end
 
-	return self
+	return serverLerpedTween
 end
 
 if RunService:IsClient() then
+	--Helper functions--------------------------------------------------------------------------------------------
 	--Calculates tween time based on given speed
 	local function _calculateTime(speed: number, pastPos: Vector3, nextPos: Vector3): number
 		local distance = (pastPos - nextPos).Magnitude
 		return distance / speed
 	end
 
+	--Calculates the magnitude of a Vector3
+	local function magnitudeSquared(v: Vector3): number
+		return v.X * v.X + v.Y * v.Y + v.Z * v.Z
+	end
+
+	--Setup-------------------------------------------------------------------------------------------------------
+	--Config Cache
+	local CAN_IDLE_RAYCAST_LOOP = Config.CAN_IDLE_RAYCAST_LOOP
+	local SIMPLOID_FALL_THROTTLE = Config.SIMPLOID_FALL_THROTTLE
+	
+	--Tables
 	local tweens = {}
 	local nextFrameUpdate = {}
 
@@ -169,8 +186,16 @@ if RunService:IsClient() then
 	local tweenIndex = {} -- tween → index
 	local rrCursor = 1 -- round-robin cursor
 
+	local clientActiveSimploids = {}
+	tweenService.ClientActiveSimploids = clientActiveSimploids
+
+	local clientIdleSimploids = {}
+
+
+	--Remotes
 	local FallRemote = script.Parent:WaitForChild("FallRemote")
 
+	--Tween Functions
 	-- O(1) add
 	local function addTween(tween)
 		table.insert(tweenKeys, tween)
@@ -199,9 +224,13 @@ if RunService:IsClient() then
 	end
 
 	local function tweenPosition(object: BasePart, goal: Vector3, tweenTime: number, jumpHeight: number): LerpedTween?
-		local parent = object.Parent
-		if not parent then
+		local character = object.Parent
+		if not character then
 			return
+		end
+		
+		if not jumpHeight then
+			jumpHeight = 0
 		end
 
 		local tween: LerpedTween = {
@@ -210,10 +239,10 @@ if RunService:IsClient() then
 			Duration = tweenTime,
 			Start = object.Position,
 			PastTime = time(),
-			NormalType = jumpHeight == 0,
-			Cancel = nil, -- required placeholder
-			JumpHeight = jumpHeight or 0,
+			Cancel = nil,
+			JumpHeight = jumpHeight,
 			HalfDuration = nil,
+			Gravity = nil
 		}
 
 		if jumpHeight > 0 then
@@ -221,7 +250,13 @@ if RunService:IsClient() then
 			tween.Gravity = 2 * jumpHeight / (tween.HalfDuration ^ 2)
 		end
 
+		tween.Simploid = clientActiveSimploids[character]
+		if clientIdleSimploids[character] then
+			clientIdleSimploids[character] = nil
+		end
+
 		function tween:Cancel()
+			clientIdleSimploids[character] = tween.Simploid
 			removeTween(tween)
 			tweens[object] = nil
 		end
@@ -240,7 +275,6 @@ if RunService:IsClient() then
 					--warn("The tween you tried to modify does not exist.")
 					return
 				end
-
 				tweenToEdit:Cancel()
 				return
 			end
@@ -283,13 +317,40 @@ if RunService:IsClient() then
 	local skipFactor = 1
 	local toProcess = 0
 
-	local ActiveSimploids = {}
-	tweenService.ActiveSimploids = ActiveSimploids
-
-	RunService.RenderStepped:Connect(function()
+	RunService.Heartbeat:Connect(function()
 		currentFrame += 1
 		fps = 1 / Stats.FrameTime
 		count = #tweenKeys
+		
+		if CAN_IDLE_RAYCAST_LOOP then
+			for character, self in clientIdleSimploids do
+				if self:GetAttribute("Dead") then 
+					clientIdleSimploids[character] = nil 
+					continue 
+				end
+				
+				local pos:Vector3 = self.AnchoredRoot.Position
+				local result = workspace:Raycast(pos + self.HeightAdditive, self.RayDirection, self.RayDownParams)
+				if result then
+					local newPos = result.Position + self.HeightAdditive
+					if magnitudeSquared(newPos - pos) > 1 then
+						character:PivotTo(CFrame.new(newPos) * self.AnchoredRoot.CFrame.Rotation)
+					end
+				else
+					task.defer(function()
+						if not self.CanFallUpdate then
+							return
+						end
+
+						self.CanFallUpdate = false
+						FallRemote:FireServer(self.Character)
+						task.wait(SIMPLOID_FALL_THROTTLE)
+						self.CanFallUpdate = true
+					end)
+				end
+			end
+		end
+
 		if count == 0 then
 			return
 		end
@@ -297,12 +358,16 @@ if RunService:IsClient() then
 		-- Dynamic skip factor
 		if fps >= 57 then
 			skipFactor = 1
+		elseif fps >= 54 then
+			skipFactor = 2
 		elseif fps >= 50 then
 			skipFactor = 3
-		elseif fps >= 40 then
+		elseif fps >= 45 then
 			skipFactor = 6
-		elseif fps >= 30 then
+		elseif fps >= 40 then
 			skipFactor = 12
+		elseif fps >= 30 then
+			skipFactor = 16
 		elseif fps >= 20 then
 			skipFactor = 24
 		else
@@ -314,7 +379,7 @@ if RunService:IsClient() then
 		now = time()
 
 		for _ = 1, toProcess do
-			local tween = tweenKeys[rrCursor]
+			local tween:LerpedTween = tweenKeys[rrCursor]
 			rrCursor += 1
 			if rrCursor > count then
 				rrCursor = 1
@@ -331,49 +396,43 @@ if RunService:IsClient() then
 			if currentFrame >= nextFrameUpdate[tween] then
 				nextFrameUpdate[tween] = currentFrame + skipFactor
 
-				local character: Model? = tween.Object.Parent
-				if not character then
-					tween:Cancel()
-					continue
-				end
-				local self = ActiveSimploids[character]
-				if not self then
-					tween:Cancel()
-					continue
-				end
-				local AnchoredRoot: BasePart = self.AnchoredRoot
+				local self = tween.Simploid
 
-				-- Compute alpha and position
+				--Compute alpha and position
 				local alpha = math.clamp((now - tween.PastTime) / tween.Duration, 0, 1)
 				local pos = tween.Start:Lerp(tween.Goal, alpha)
 
-				-- Jump arc
-				if not tween.NormalType then
-					local t = alpha * tween.Duration
-					local timeFromPeak = math.abs(t - tween.HalfDuration)
-					local yOffset = tween.JumpHeight - 0.5 * tween.Gravity * (timeFromPeak ^ 2)
-					pos = Vector3.new(pos.X, pos.Y + yOffset, pos.Z)
+				--Jump arc
+				if tween.JumpHeight > 0 then
+					pos = Vector3.new(pos.X, pos.Y + (tween.JumpHeight - 0.5 * tween.Gravity * (math.abs(alpha * tween.Duration - tween.HalfDuration) ^ 2)), pos.Z)
+					
+					--(Readable Version)
+					-- local t = alpha * tween.Duration
+					-- local timeFromPeak = math.abs(t - tween.HalfDuration)
+					-- local yOffset = tween.JumpHeight - 0.5 * tween.Gravity * (timeFromPeak ^ 2)
+					-- pos = Vector3.new(pos.X, pos.Y + yOffset, pos.Z)
 				else
 					local result = workspace:Raycast(pos + self.HeightAdditive, self.RayDirection, self.RayDownParams)
-
 					if result then
 						pos = result.Position + self.HeightAdditive
 					else
-						self.AnchoredRootWeld.C0 = CFrame.identity
-						if not self.CanFallUpdate then
-							return
-						end
+						pos = pos + self.HeightAdditive + self.RayDirection
+						task.defer(function()
+							if not self.CanFallUpdate then
+								return
+							end
 
-						self.CanFallUpdate = false
-						FallRemote:FireServer(self.Character)
-						task.wait(SIMPLOID_FALL_THROTTLE)
-						self.CanFallUpdate = true
+							self.CanFallUpdate = false
+							FallRemote:FireServer(self.Character)
+							task.wait(SIMPLOID_FALL_THROTTLE)
+							self.CanFallUpdate = true
+						end)
 					end
 				end
+				
+				self.Character:PivotTo(CFrame.new(pos) * self.AnchoredRoot.CFrame.Rotation)
 
-				character:PivotTo(CFrame.new(pos) * AnchoredRoot.CFrame.Rotation)
-
-				-- end tween
+				--End tween
 				if alpha >= 1 then
 					tween:Cancel()
 					count = #tweenKeys
