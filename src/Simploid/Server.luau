@@ -15,14 +15,16 @@ local serverActiveSimploids = ReplicatedTween.ServerActiveSimploids
 local Terrain = workspace.Terrain
 local ReplicationRemote:RemoteEvent = simploid:WaitForChild("ReplicationRemote")
 
---Terain helping variables
-local RESOLUTION = 4 					-- voxel resolution (4x4x4 studs)
-local HALF = Vector3.new(1, 1, 1) 		--Initial terrain region check size
+--Helping variables
+local RESOLUTION = 4 												-- Voxel resolution (4x4x4 studs)
+local HALF = Vector3.new(1, 1, 1) 									-- Initial terrain region check size
 local DEBUG_PATHFINDING_RAYS = Config.DEBUG_PATHFINDING_RAYS
 local DEBUG_PATHFINDING_POINTS = Config.DEBUG_PATHFINDING_POINTS
 local ITERATIONS = Config.PATHFINDING_RAY_CHECK_ITERATIONS
 
 --Debug Functions
+
+--Show point at a position
 local function showPoint(position:Vector3, color:Color3?)
 	if not DEBUG_PATHFINDING_POINTS then return end
 	local part = Instance.new("Part")
@@ -34,6 +36,7 @@ local function showPoint(position:Vector3, color:Color3?)
 	part.Position = position
 	part.Size = Vector3.new(1,1,1)
 	part.Shape = Enum.PartType.Ball
+	part.Material = Enum.Material.Neon
 	part.Parent = workspace
 	task.defer(function()
 		task.wait(10)
@@ -41,6 +44,7 @@ local function showPoint(position:Vector3, color:Color3?)
 	end)
 end
 	
+--Visualize raycast
 local function drawRay(origin: Vector3, direction: Vector3, color: Color3)
 	if not DEBUG_PATHFINDING_RAYS then return end
 
@@ -64,7 +68,6 @@ local function drawRay(origin: Vector3, direction: Vector3, color: Color3)
 	-- Auto cleanup
 	game:GetService("Debris"):AddItem(part, 10)
 end
-
 
 --********************************************************************************************************
 --SERVER SIMPLOID HELPER METHODS
@@ -167,7 +170,7 @@ return function(Simploid)
 	end
 
 	if Config.CAN_PATHFIND then
-		--Pathfind an Simploid along a path
+		--Pathfind a Simploid along a path
 		function Simploid:PathfindTo(targetPosition:Vector3)
 			assert(targetPosition, "No goal Vector3 given!")
 			if not self.NormalState or self.Motion ~= "None" then return end
@@ -287,17 +290,15 @@ return function(Simploid)
 						task.wait(1) 
 						continue 
 					end
-
-					-- get Simploid's current position
+					-- Get Simploid's current position
 					local origin = self.HumanoidRootPart.Position
-					-- pick a random point within the given range
+					-- Pick a random point within the given range
 					local randomX = origin.X + (math.random() - 0.5) * 2 * range
 					local randomZ = origin.Z + (math.random() - 0.5) * 2 * range
 					local point = Vector3.new(randomX, origin.Y, randomZ)
 
-					-- pathfind to that point
+					-- Pathfind to that point
 					self:PathfindTo(point)
-
 					task.wait(1)
 				end
 			end)
@@ -308,9 +309,7 @@ return function(Simploid)
 	function Simploid:Death()
 		self:_cancelMoveTo()
 		self:SetAttribute("State", "Dead")
-
 		self.Janitor:Cleanup()
-		
 		task.wait(Config.SIMPLOID_RAGDOLL_TIME + 1)
 		self:Destroy()
 	end
@@ -318,11 +317,9 @@ return function(Simploid)
 	--Cleanup method
 	function Simploid:Destroy()
 		local character = self.Character
-		self:_cancelMoveTo()
-		
+		self:_cancelMoveTo()	
 		serverActiveSimploids[character] = nil
 		serverPropertyCache[character] = nil
-
 		self.Janitor:Destroy()
 		character:Destroy()
 		self = nil
@@ -536,7 +533,6 @@ return function(Simploid)
 				local high = dist
 
 				for _i = 1, ITERATIONS do
-					task.wait(0.5)
 					local mid = (low + high) * 0.5
 
 					local testPos
@@ -575,8 +571,7 @@ return function(Simploid)
 					end
 					if hit then
 						if isAbove then 
-							low = mid
-								
+							low = mid				
 							drawRay(
 								currentPos,
 								testDir,
@@ -587,9 +582,7 @@ return function(Simploid)
 								low = mid
 							else
 								high = mid	
-							end
-							
-								
+							end	
 							drawRay(
 								testPos,
 								testDir,
@@ -599,7 +592,6 @@ return function(Simploid)
 					else
 						if isAbove then
 							high = mid
-					
 							drawRay(
 								currentPos,
 								testDir,
@@ -607,8 +599,7 @@ return function(Simploid)
 							)
 
 						else
-							low = mid
-								
+							low = mid	
 							drawRay(
 								testPos,
 								testDir,

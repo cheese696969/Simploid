@@ -13,6 +13,16 @@
 
 ---
 
+## 🏃‍➡️ Simploid States
+| **State Name(string)** | **Description** |
+|------------------------|-----------------|
+| `Idle` | Simploid is in normal state, doing nothing. | 
+| `Running` | Constant linear moving state. |
+| `Jumping` | Jump state. |
+| `Falling` | Falling state when ground is far below. | 
+
+---
+
 ## 📦 Server - (Changeable with the Simploid object itself, example : Simploid.RayDownParams = RaycastParams.new(...))
 
 ### **Properties**
@@ -26,6 +36,8 @@
 |---------|--------------|
 | `:SetAttribute(attributeName: string, attributeValue: any)` | Sets a custom attribute on the Simploid instance. |
 | `:GetAttribute(attributeName: string) → any` | Returns the value of a stored attribute. |
+| `:GetAttributeChangedSignal(attributeName: string) → RBXScriptSignal?` | Returns the signal connection of a stored attribute. |
+| `:ReplicateProperty(attributeName: string, value: any)` | Replicates a property change from server to client. |
 | `:MoveTo(position: Vector3)` | Moves the Simploid to the given position using linear motion. |
 | `:CancelMoveTo()` | Cancels the current movement operation. |
 | `:PathfindTo(position: Vector3)` | Calculates and follows a path to the given position. |
@@ -50,6 +62,7 @@
 |---------|--------------|
 | `:SetAttribute(attributeName: string, attributeValue: any)` | Sets a client-side attribute on the Simploid. |
 | `:GetAttribute(attributeName: string) → any` | Retrieves a client-side attribute value. |
+| `:GetAttributeChangedSignal(attributeName: string) → RBXScriptSignal?` | Returns the signal connection of a stored attribute. |
 | `:LoadAnimation(animation: Animation) → AnimationTrack` | Loads and returns a playable animation track. |
 | `:Death()` | Handles death visuals and effects on the client. |
 | `:Destroy()` | Cleans up the Simploid’s client instance. |

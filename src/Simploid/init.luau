@@ -55,8 +55,8 @@ To get the latest version of these module dependencies, go to:
 https://github.com/cheese696969/Simploid under \DevPackages
 ]]
 local Janitor = require(script.Packages.Janitor)
-local ReplicatedTween = require(script.ReplicatedTween)
 local Goodsignal = require(script.Packages.Goodsignal)
+local ReplicatedTween = require(script.ReplicatedTween)
 local Config = require(script.Config)
 local Utils = require(script.Utils)
 
