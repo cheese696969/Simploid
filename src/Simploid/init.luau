@@ -15,6 +15,7 @@
 	-Update server movement position whenever you want
 	
 	Drawbacks:
+	-All simploids are reparented by the module into the same folder (Because of replication and streaming-in problems)
 	-Only the most basic methods of humanoids are reproduced
 	-NPC characters may go through walls
 	-Does not implement any of the humanoid events
@@ -30,14 +31,14 @@
 	
 	EXAMPLE USAGE:
 	In local script:
-		require(game.ReplicatedStorage.Simploid)
+		require(game.ReplicatedStorage.Simploid).Client
 		
 	In server script:
-		local Simploid = require(game.ReplicatedStorage.Simploid)
-		local character = workspace.Dummy 							--Have your own dummy rig character to use.
+		local Simploid = require(game.ReplicatedStorage.Simploid).Server
+		local character = workspace.Dummy 									--Have your own dummy rig character to use.
 		
 		local new_simploid = Simploid.new(character)
-		new_simploid:PathfindTo(Vector3.new(10,0,10))				--Moves npc dummy to the given position
+		new_simploid:PathfindTo(Vector3.new(10,0,10))						--Moves npc dummy to the given position
 	
 	For more information on Simploid's properties, attributes, and methods, go to:
 	<Simploid's Usable Attributes and Methods in the github API reference documentation>		
@@ -225,8 +226,8 @@ if RunService:IsServer() then
 		
 		self.Janitor:Add(character:GetAttributeChangedSignal("Health"):Connect(function()
 			local raw = character:GetAttribute("Health")
-			local health = (typeof(raw) == "number" and raw or 0) :: number
-
+			local health = math.clamp((typeof(raw) == "number" and raw or 0) :: number, 0, character:GetAttribute("MaxHealth") :: number)
+			
 			if health <= 0 then
 				self:Death()
 			end

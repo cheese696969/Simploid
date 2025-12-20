@@ -23,7 +23,7 @@
 
 ---
 
-## 📦 Server - (Changeable with the Simploid object itself, example : Simploid.RayDownParams = RaycastParams.new(...))
+## 📦 Server
 
 ### **Properties**
 | Name | Type | Description |

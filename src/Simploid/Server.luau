@@ -20,6 +20,7 @@ local RESOLUTION = 4 												-- Voxel resolution (4x4x4 studs)
 local HALF = Vector3.new(1, 1, 1) 									-- Initial terrain region check size
 local DEBUG_PATHFINDING_RAYS = Config.DEBUG_PATHFINDING_RAYS
 local DEBUG_PATHFINDING_POINTS = Config.DEBUG_PATHFINDING_POINTS
+local ROOT_CANCOLLIDE_ON_FALL_STATE_AUTO = Config.ROOT_CANCOLLIDE_ON_FALL_STATE_AUTO
 local ITERATIONS = Config.PATHFINDING_RAY_CHECK_ITERATIONS
 
 --Debug Functions
@@ -431,7 +432,9 @@ return function(Simploid)
 
 		self:SetAttribute("State", "Falling")
 		self.NormalState = false
-		AnchoredRoot.CanCollide = true
+		if ROOT_CANCOLLIDE_ON_FALL_STATE_AUTO then
+			AnchoredRoot.CanCollide = true
+		end
 		AnchoredRoot.Anchored = false
 		AnchoredRoot:SetNetworkOwner(nil)
 
@@ -439,7 +442,9 @@ return function(Simploid)
 			result = self:_castGroundCheck()
 			if result then
 				character:PivotTo(CFrame.new(result.Position + self.HeightAdditive))
-				AnchoredRoot.CanCollide = false
+				if ROOT_CANCOLLIDE_ON_FALL_STATE_AUTO then
+					AnchoredRoot.CanCollide = false
+				end
 				AnchoredRoot.Anchored = true
 				self.NormalState = true
 				self:SetAttribute("State", "Idle")

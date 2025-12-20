@@ -94,6 +94,8 @@ local Config = {
 	--ROOT_TO_SIMPLOID_UPDATE_DIST = 200,					--If simploid is within this distance from the player, it will ground the npc's position
 	SIMPLOID_FALL_THROTTLE = 3,								--If simploid goes to falling state, it will wait this long to resend a fall update to server
 	
+	ROOT_CANCOLLIDE_ON_FALL_STATE_AUTO = true,				--Describes if AnchoredRoot should CanCollide when Simploid is in falling state
+
 	--Directions for exit raycast
 	DIRECTIONS = {
 		Vector3.new(1, 0, 0),   -- +X
