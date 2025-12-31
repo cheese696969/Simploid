@@ -53,7 +53,7 @@ local PathfindingService = game:GetService("PathfindingService")
 Module Dependencies: Change path if wanted
 Make sure you have the module dependencies installed/created as an instance as a child of this module.
 To get the latest version of these module dependencies, go to:
-https://github.com/cheese696969/Simploid under \DevPackages
+https://github.com/cheese696969/Simploid under DevPackages\
 ]]
 local Janitor = require(script.Packages.Janitor)
 local Goodsignal = require(script.Packages.Goodsignal)
@@ -115,6 +115,9 @@ if RunService:IsServer() then
 		--Attributes
 		RayDownParams: RaycastParams,
 		Path: Path,
+		--Signals
+		MoveToFinished :RBXScriptSignal,
+		PathfindToFinished: RBXScriptSignal,
 		--Methods
 		SetAttribute: (self:Simploid, attributeName:string, attributeValue:any) -> nil,
 		GetAttribute: (self:Simploid, attributeName:string) -> any,
@@ -200,14 +203,18 @@ if RunService:IsServer() then
 		AnchoredRootWeld.Enabled = true
 		
 		self.AnchoredRoot = AnchoredRoot
-		
+
+		--PUBLIC SIGNALS (SERVER ONLY)------------------------------------------------------------
+		self.MoveToFinished = Goodsignal.new()
+		self.PathfindToFinished = Goodsignal.new()
+
 		--STATES----------------------------------------------------------------------------------
 		--DO NOT CHANGE THESE: changeable through code only
-		self.NormalState = true 						
+		self.NormalState = true 					--True = Simploid Anchored 	
 		self.Motion = "None" 						--Used so that pathfinding calls do not clash
-		self.MotionTarget = nil
-		self.CanFallUpdate = true
-		self.JumpSignal = Goodsignal.new()
+		self.MotionTarget = nil						--Vector3 Pathfinding Target
+		self.CanFallUpdate = true					--Unanchored Throttle
+		self.JumpSignal = Goodsignal.new()			--Fires every jump finish
 		
 		--HELPING ATTRIBUTES----------------------------------------------------------------------
 		self.HeightAdditive = Vector3.new(0, (character:GetAttribute("RootHeight") :: number?), 0)

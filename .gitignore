@@ -6,7 +6,7 @@
 /*.rbxl.lock
 
 # Wally packages
-Packages/
+Packages
 
 # Lock file (optional)
 wally.lock

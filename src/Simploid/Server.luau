@@ -126,7 +126,7 @@ return function(Simploid)
 	function Simploid:MoveTo(targetPosition:Vector3?) : boolean
 		assert(targetPosition, "No goal Vector3 given!")
 		if self.CurrentTween and not self.CurrentTween.IsJump then 
-			self.CurrentTween:Cancel() 
+			self.CurrentTween:Cancel()
 		end
 		
 		self:SetAttribute("State", "Running")
@@ -166,6 +166,7 @@ return function(Simploid)
 			end
 		end)
 		tween.Completed:Wait()
+		self.MoveToFinished:Fire(completed) 
 		task.wait()
 		return completed
 	end
@@ -207,9 +208,12 @@ return function(Simploid)
 							self.Signal:Wait()
 							continue
 						end
+						self.PathfindToFinished:Fire(false)
 						break
 					end
 				end
+				self.PathfindToFinished:Fire(true)
+				
 			elseif typeof(path) == "Vector3" then
 				if self.NormalState then
 					self:MoveTo(path)
